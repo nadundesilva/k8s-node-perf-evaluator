@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 )
+
+const SERVER_PORT = 8080
 
 func main() {
 	serviceMux := http.NewServeMux()
@@ -12,7 +15,9 @@ func main() {
 	serviceMux.Handle("/ping", http.HandlerFunc(handlePing))
 	serviceMux.Handle("/cpu-intensive-task", http.HandlerFunc(handleCpuIntensiveTask))
 
-	http.ListenAndServe(":8080", serviceMux)
+	listenAddress := fmt.Sprintf(":%d", SERVER_PORT)
+	log.Printf("Starting listening on %s", listenAddress)
+	http.ListenAndServe(listenAddress, serviceMux)
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
@@ -21,7 +26,7 @@ func handlePing(w http.ResponseWriter, r *http.Request) {
 
 func handleCpuIntensiveTask(w http.ResponseWriter, r *http.Request) {
 	var result float64 = 0
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < int(math.Pow(10, 8)); i++ {
 		result += math.Tan(float64(i)) * math.Atan(float64(i))
 	}
 	fmt.Fprintf(w, "Result: %.2f", result)

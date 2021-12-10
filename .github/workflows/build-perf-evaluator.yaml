@@ -10,7 +10,7 @@ jobs:
       packages: write
     strategy:
       matrix:
-        package: ["test-service"]
+        package: ["test-service", "test-runner"]
     steps:
       - name: Login to the Container registry
         uses: docker/login-action@v1

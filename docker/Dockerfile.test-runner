@@ -1,0 +1,14 @@
+FROM golang:1.17.5 as builder
+
+ARG GIT_REVISION=""
+ARG PROJECT_PKG=""
+WORKDIR /repo
+
+COPY ./ /repo/
+RUN GIT_REVISION=${GIT_REVISION} PROJECT_PKG=${PROJECT_PKG} bash /repo/build-binary.sh test-service
+
+FROM alpine:3.15.0
+
+COPY --from=builder /repo/out/test-service /app/test-service
+
+ENTRYPOINT ["/app/test-service"]
