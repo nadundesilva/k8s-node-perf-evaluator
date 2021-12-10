@@ -1,0 +1,29 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  build-tools:
+    name: Build Perf Evaluator
+    runs-on: ubuntu-20.04
+    permissions:
+      packages: write
+    strategy:
+      matrix:
+        package: ["test-service"]
+    steps:
+      - name: Login to the Container registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & Push Docker Image
+        uses: docker/build-push-action@v2
+        with:
+          build-args: |
+            GIT_REVISION=${{ github.sha }}
+            PROJECT_PKG="github.com/${{ github.repository }}"
+          file: docker/Dockerfile.${{ matrix.package }}
+          push: true
+          tags: ghcr.io/nadundesilva/tools/k8s-node-perf-evaluator/${{ matrix.package }}:latest
