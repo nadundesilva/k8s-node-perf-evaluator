@@ -26,12 +26,14 @@ func main() {
 	}
 
 	k8sClient := k8s.NewFromKubeConfig(config.KubeConfig)
-	nodesList, err := k8sClient.ListNodes(ctx)
+	nodesList, err := k8sClient.ListNodes(ctx, config.NodeSelector)
 	if err != nil {
-		logger.Errorw("Failed to list the nodes in the cluster", "error", err)
+		logger.Fatalw("Failed to list the nodes in the cluster", "error", err)
 	}
 
+	nodeNames := []string{}
 	for _, node := range nodesList.Items {
-		logger.Infof("Node: %s", node.GetObjectMeta().GetName())
+		nodeNames = append(nodeNames, node.GetObjectMeta().GetName())
 	}
+	logger.Infow("Resolved available nodes to be tested", "nodes", nodeNames)
 }

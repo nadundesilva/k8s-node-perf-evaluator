@@ -1,2 +1,4 @@
 kubeConfig: ""
-nodeSelector: {}
+nodeSelector:
+  labelSelector: ""
+  fieldSelector: ""
