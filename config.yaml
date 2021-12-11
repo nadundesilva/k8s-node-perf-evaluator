@@ -1,4 +1,5 @@
 kubeConfig: ""
+namespace: "k8s-node-perf-evaluation-services"
 nodeSelector:
   labelSelector: ""
   fieldSelector: ""

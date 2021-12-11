@@ -5,9 +5,10 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"os"
 )
 
-const SERVER_PORT = 8080
+var servicePort = os.Getenv("SERVICE_PORT")
 
 func main() {
 	serviceMux := http.NewServeMux()
@@ -15,7 +16,10 @@ func main() {
 	serviceMux.Handle("/ping", http.HandlerFunc(handlePing))
 	serviceMux.Handle("/cpu-intensive-task", http.HandlerFunc(handleCpuIntensiveTask))
 
-	listenAddress := fmt.Sprintf(":%d", SERVER_PORT)
+	if servicePort == "" {
+		servicePort = "8080"
+	}
+	listenAddress := fmt.Sprintf(":%s", servicePort)
 	log.Printf("Starting listening on %s", listenAddress)
 	http.ListenAndServe(listenAddress, serviceMux)
 }

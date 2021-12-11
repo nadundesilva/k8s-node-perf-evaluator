@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	KubeConfig   string      `yaml:"kubeConfig"`
+	Namespace    string      `yaml:"namespace"`
 	NodeSelector Selector    `yaml:"nodeSelector"`
 	TestService  TestService `yaml:"testService"`
 }

@@ -3,10 +3,15 @@ package k8s
 import (
 	"context"
 
-	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/config"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
 
 type Interface interface {
-	ListNodes(ctx context.Context, selector config.Selector) (*corev1.NodeList, error)
+	CreateNamespace(ctx context.Context, namespace *corev1.Namespace) (*corev1.Namespace, error)
+	CreateDeployment(ctx context.Context, deployment *appsv1.Deployment) (*appsv1.Deployment, error)
+
+	ListNodes(ctx context.Context, selector Selector) (*corev1.NodeList, error)
+
+	DeleteNamespace(ctx context.Context, name string) (error)
 }
