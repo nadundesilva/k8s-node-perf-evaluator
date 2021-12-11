@@ -6,9 +6,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const TEST_SERVICE_PORT = 8080
+const TEST_SERVICE_PORT_NAME = "http-port"
 
 func (runner *testRunner) makeNamespace(namespace string) *corev1.Namespace {
 	return &corev1.Namespace{
@@ -39,7 +41,7 @@ func (runner *testRunner) makeDeployment(nodeName string) *appsv1.Deployment {
 							Image: runner.config.TestService.Image,
 							Ports: []corev1.ContainerPort{
 								{
-									Name:          "http-port",
+									Name:          TEST_SERVICE_PORT_NAME,
 									ContainerPort: TEST_SERVICE_PORT,
 								},
 							},
@@ -52,6 +54,26 @@ func (runner *testRunner) makeDeployment(nodeName string) *appsv1.Deployment {
 						},
 					},
 					NodeName: nodeName,
+				},
+			},
+		},
+	}
+}
+
+func (runner *testRunner) makeService(nodeName string) *corev1.Service {
+	return &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      makeName(nodeName),
+			Namespace: runner.config.Namespace,
+			Labels:    makeLabels(nodeName),
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: makeLabels(nodeName),
+			Ports: []corev1.ServicePort{
+				{
+					Name:       TEST_SERVICE_PORT_NAME,
+					Port:       TEST_SERVICE_PORT,
+					TargetPort: intstr.FromString(TEST_SERVICE_PORT_NAME),
 				},
 			},
 		},

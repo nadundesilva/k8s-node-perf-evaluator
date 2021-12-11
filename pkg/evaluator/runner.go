@@ -62,8 +62,13 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 			runner.logger.Fatalw("failed to create deployment for node", "node", nodeName)
 		}
 
+		service, err := runner.k8sClient.CreateService(ctx, runner.makeService(nodeName))
+		if err != nil {
+			runner.logger.Fatalw("failed to create service for node", "node", nodeName)
+		}
+
 		runner.logger.Infow("created test service", "namespace", namespace.GetName(), "node", nodeName,
-			"deployment", deployment.GetName())
+			"deployment", deployment.GetName(), "service", service.GetName())
 	}
 }
 

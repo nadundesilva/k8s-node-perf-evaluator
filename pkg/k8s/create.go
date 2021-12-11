@@ -15,3 +15,7 @@ func (c *client) CreateNamespace(ctx context.Context, namespace *corev1.Namespac
 func (c *client) CreateDeployment(ctx context.Context, deployment *appsv1.Deployment) (*appsv1.Deployment, error) {
 	return c.clientset.AppsV1().Deployments(deployment.GetObjectMeta().GetNamespace()).Create(ctx, deployment, metav1.CreateOptions{})
 }
+
+func (c *client) CreateService(ctx context.Context, service *corev1.Service) (*corev1.Service, error) {
+	return c.clientset.CoreV1().Services(service.GetObjectMeta().GetNamespace()).Create(ctx, service, metav1.CreateOptions{})
+}
