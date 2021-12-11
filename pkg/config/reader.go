@@ -12,8 +12,13 @@ import (
 type Config struct {
 	KubeConfig   string      `yaml:"kubeConfig"`
 	Namespace    string      `yaml:"namespace"`
-	NodeSelector Selector    `yaml:"nodeSelector"`
 	TestService  TestService `yaml:"testService"`
+	NodeSelector Selector    `yaml:"nodeSelector"`
+	Ingress      Ingress     `yaml:"ingress"`
+}
+
+type TestService struct {
+	Image string `yaml:"image"`
 }
 
 type Selector struct {
@@ -21,8 +26,10 @@ type Selector struct {
 	FieldSelector string `yaml:"fieldSelector"`
 }
 
-type TestService struct {
-	Image string `yaml:"image"`
+type Ingress struct {
+	ClassName  string `yaml:"className"`
+	Hostname   string `yaml:"hostname"`
+	PathPrefix string `yaml:"pathPrefix"`
 }
 
 func Read(configFile string) (*Config, error) {

@@ -1,7 +1,11 @@
 kubeConfig: ""
 namespace: "k8s-node-perf-evaluation-services"
+testService:
+  image: "ghcr.io/nadundesilva/tools/k8s-node-perf-evaluator/test-service:latest"
 nodeSelector:
   labelSelector: ""
   fieldSelector: ""
-testService:
-  image: "ghcr.io/nadundesilva/tools/k8s-node-perf-evaluator/test-service:latest"
+ingress:
+  className: ""
+  hostname: ""
+  pathPrefix: "/"

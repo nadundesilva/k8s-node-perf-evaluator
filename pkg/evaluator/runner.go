@@ -2,6 +2,7 @@ package evaluator
 
 import (
 	"context"
+	"time"
 
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/config"
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/k8s"
@@ -46,6 +47,7 @@ func (runner *testRunner) RunTest(ctx context.Context) {
 		}
 		runner.logger.Info("cleaned up all resource", "namespace", runner.config.Namespace)
 	}()
+	time.Sleep(time.Minute)
 }
 
 func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) {
@@ -67,8 +69,13 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 			runner.logger.Fatalw("failed to create service for node", "node", nodeName)
 		}
 
+		ingress, err := runner.k8sClient.CreateIngress(ctx, runner.makeIngress(nodeName))
+		if err != nil {
+			runner.logger.Fatalw("failed to create ingress for node", "node", nodeName)
+		}
+
 		runner.logger.Infow("created test service", "namespace", namespace.GetName(), "node", nodeName,
-			"deployment", deployment.GetName(), "service", service.GetName())
+			"deployment", deployment.GetName(), "service", service.GetName(), "ingress", ingress.GetName())
 	}
 }
 
