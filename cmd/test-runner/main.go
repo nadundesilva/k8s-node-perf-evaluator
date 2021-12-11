@@ -3,29 +3,29 @@ package main
 import (
 	"context"
 	"flag"
-	"path/filepath"
 
+	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/config"
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/k8s"
 	"go.uber.org/zap"
-	"k8s.io/client-go/util/homedir"
 )
 
 func main() {
+	ctx := context.Background()
+
 	zapLogger, _ := zap.NewProduction()
 	defer zapLogger.Sync()
 	logger := zapLogger.Sugar()
 	logger.Info("Starting Node Performance Evaluator")
-	ctx := context.Background()
 
-	var kubeconfig *string
-	if home := homedir.HomeDir(); home != "" {
-		kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	} else {
-		kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-	}
+	configFile := flag.String("config", "config.yaml", "(optional) absolute path to the config file")
 	flag.Parse()
 
-	k8sClient := k8s.NewFromKubeConfig(*kubeconfig)
+	config, err := config.Read(*configFile)
+	if err != nil {
+		logger.Fatalw("failed to read Config", "error", err)
+	}
+
+	k8sClient := k8s.NewFromKubeConfig(config.KubeConfig)
 	nodesList, err := k8sClient.ListNodes(ctx)
 	if err != nil {
 		logger.Errorw("Failed to list the nodes in the cluster", "error", err)
