@@ -2,3 +2,5 @@ kubeConfig: ""
 nodeSelector:
   labelSelector: ""
   fieldSelector: ""
+testService:
+  image: "ghcr.io/nadundesilva/tools/k8s-node-perf-evaluator/test-service:latest"

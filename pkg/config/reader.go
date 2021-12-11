@@ -10,13 +10,18 @@ import (
 )
 
 type Config struct {
-	KubeConfig   string   `yaml:"kubeConfig"`
-	NodeSelector Selector `yaml:"nodeSelector"`
+	KubeConfig   string      `yaml:"kubeConfig"`
+	NodeSelector Selector    `yaml:"nodeSelector"`
+	TestService  TestService `yaml:"testService"`
 }
 
 type Selector struct {
 	LabelSelector string `yaml:"labelSelector"`
 	FieldSelector string `yaml:"fieldSelector"`
+}
+
+type TestService struct {
+	Image string `yaml:"image"`
 }
 
 func Read(configFile string) (*Config, error) {
