@@ -13,4 +13,3 @@ func (c *client) ListNodes(ctx context.Context, selector Selector) (*corev1.Node
 		FieldSelector: selector.FieldSelector,
 	})
 }
-

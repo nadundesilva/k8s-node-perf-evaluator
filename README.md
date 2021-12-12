@@ -1,4 +1,4 @@
-# Kubernetes Node Performance Evaluator
+# Kubernetes Cluster Node Performance Evaluator
 
 [![Build](https://github.com/nadundesilva/k8s-node-perf-evaluator/actions/workflows/build-perf-evaluator.yaml/badge.svg)](https://github.com/nadundesilva/k8s-node-perf-evaluator/actions/workflows/build-perf-evaluator.yaml)
 [![Code Scan](https://github.com/nadundesilva/k8s-node-perf-evaluator/actions/workflows/code-scan.yaml/badge.svg)](https://github.com/nadundesilva/k8s-node-perf-evaluator/actions/workflows/code-scan.yaml)
