@@ -86,9 +86,10 @@ func (runner *testRunner) makeService(nodeName string) *corev1.Service {
 func (runner *testRunner) makeIngress(nodeName string) *networkingv1.Ingress {
 	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      makeName(nodeName),
-			Namespace: runner.config.Namespace,
-			Labels:    makeLabels(nodeName),
+			Name:        makeName(nodeName),
+			Namespace:   runner.config.Namespace,
+			Labels:      makeLabels(nodeName),
+			Annotations: runner.config.Ingress.Annotations,
 		},
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: &runner.config.Ingress.ClassName,

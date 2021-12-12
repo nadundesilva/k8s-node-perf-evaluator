@@ -27,9 +27,10 @@ type Selector struct {
 }
 
 type Ingress struct {
-	ClassName  string `yaml:"className"`
-	Hostname   string `yaml:"hostname"`
-	PathPrefix string `yaml:"pathPrefix"`
+	ClassName   string            `yaml:"className"`
+	Hostname    string            `yaml:"hostname"`
+	PathPrefix  string            `yaml:"pathPrefix"`
+	Annotations map[string]string `yaml:"annotations"`
 }
 
 func Read(configFile string) (*Config, error) {
