@@ -58,7 +58,7 @@ func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) *testRunner
 	}
 }
 
-func (runner *testRunner) RunTest(ctx context.Context) *map[string]testService {
+func (runner *testRunner) RunTest(ctx context.Context) (*map[string]testService, error) {
 	nodesList, err := runner.k8sClient.ListNodes(ctx, k8s.Selector{
 		LabelSelector: runner.config.NodeSelector.LabelSelector,
 		FieldSelector: runner.config.NodeSelector.FieldSelector,
@@ -73,7 +73,7 @@ func (runner *testRunner) RunTest(ctx context.Context) *map[string]testService {
 	}
 	runner.logger.Infow("resolved available nodes to be tested", "nodes", nodeNames)
 
-	testServices := runner.prepareTestServices(ctx, nodesList)
+	testServices, err := runner.prepareTestServices(ctx, nodesList)
 	defer func() {
 		err := runner.cleanupTestServices(ctx)
 		if err != nil {
@@ -81,12 +81,32 @@ func (runner *testRunner) RunTest(ctx context.Context) *map[string]testService {
 		}
 		runner.logger.Info("cleaned up all resource", "namespace", runner.config.Namespace)
 	}()
+	if err != nil {
+		return nil, err
+	}
 	runner.runPingTest(ctx, testServices)
-	return testServices
+	return testServices, nil
 }
 
-func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) *map[string]testService {
-	namespace, err := runner.k8sClient.CreateNamespace(ctx, runner.makeNamespace(runner.config.Namespace))
+func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) (*map[string]testService, error) {
+	namespace, err := runner.k8sClient.GetNamespace(ctx, runner.config.Namespace)
+	if err != nil {
+		runner.logger.Fatalw("failed to check if the test services namespace existed", "namespace", runner.config.Namespace, "error", err)
+	}
+	if namespace != nil {
+		err = runner.k8sClient.DeleteNamespace(ctx, namespace.GetName())
+		if err != nil {
+			return nil, err
+		}
+		runner.logger.Infow("waiting for namespace deletion to complete", "namespace", namespace.GetName())
+		err := runner.k8sClient.WaitForNamespaceDeletion(ctx, namespace.GetName())
+		if err != nil {
+			return nil, err
+		}
+		runner.logger.Infow("deleted existing existing test services namespace", "namespace", namespace.GetName())
+	}
+
+	namespace, err = runner.k8sClient.CreateNamespace(ctx, runner.makeNamespace(runner.config.Namespace))
 	if err != nil {
 		runner.logger.Fatalw("failed to create test services namespace", "namespace", runner.config.Namespace, "error", err)
 	}
@@ -121,7 +141,7 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 		runner.logger.Infow("created test service", "namespace", namespace.GetName(), "node", nodeName,
 			"deployment", deployment.GetName(), "service", service.GetName(), "ingress", ingress.GetName())
 	}
-	return &testServices
+	return &testServices, nil
 }
 
 func (runner *testRunner) runPingTest(ctx context.Context, testSvcs *map[string]testService) {

@@ -16,5 +16,9 @@ type Interface interface {
 
 	ListNodes(ctx context.Context, selector Selector) (*corev1.NodeList, error)
 
+	GetNamespace(ctx context.Context, name string) (*corev1.Namespace, error)
+
 	DeleteNamespace(ctx context.Context, name string) (error)
+
+	WaitForNamespaceDeletion(ctx context.Context, name string) error
 }

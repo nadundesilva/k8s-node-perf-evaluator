@@ -28,7 +28,10 @@ func main() {
 	}
 
 	testRunner := evaluator.NewTestRunner(config, logger)
-	testServices := testRunner.RunTest(ctx)
+	testServices, err := testRunner.RunTest(ctx)
+	if err != nil {
+		logger.Fatalw("Failed to run test", "error", err)
+	}
 	data, err := json.Marshal(testServices)
 	if err != nil {
 		logger.Fatalw("Failed to convert test services to json", "error", err)
