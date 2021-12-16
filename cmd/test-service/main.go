@@ -25,7 +25,7 @@ func main() {
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
-	// Do nothing
+	fmt.Fprintf(w, "{\"status\":\"success\"}")
 }
 
 func handleCpuIntensiveTask(w http.ResponseWriter, r *http.Request) {

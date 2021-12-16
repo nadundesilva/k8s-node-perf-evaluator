@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
+	"fmt"
 
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/config"
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/evaluator"
@@ -26,5 +28,10 @@ func main() {
 	}
 
 	testRunner := evaluator.NewTestRunner(config, logger)
-	testRunner.RunTest(ctx)
+	testServices := testRunner.RunTest(ctx)
+	data, err := json.Marshal(testServices)
+	if err != nil {
+		logger.Fatalw("Failed to convert test services to json", "error", err)
+	}
+	fmt.Printf("Results: %s\n", string(data))
 }

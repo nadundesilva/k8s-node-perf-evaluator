@@ -2,10 +2,12 @@ package evaluator
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/config"
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/k8s"
 	"go.uber.org/zap"
@@ -20,19 +22,29 @@ type testRunner struct {
 }
 
 type testService struct {
+	Uuid        string
+	NodeName    string
 	BaseUrl     string
-	TestResults testResults
+	TestResults *testResults
 }
 
 type testResults struct {
-	PingTest             testRun
-	CpuIntensiveTaskTest testRun
+	PingTest             *testRun
+	CpuIntensiveTaskTest *testRun
 }
 
 type testRun struct {
 	TotalRequestsCount       int
 	TotalFailedRequestsCount int
 	TotalLatency             time.Duration
+}
+
+type status string
+
+const statusSuccess status = "success"
+
+type testServiceResponse struct {
+	Status status
 }
 
 func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) *testRunner {
@@ -46,7 +58,7 @@ func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) *testRunner
 	}
 }
 
-func (runner *testRunner) RunTest(ctx context.Context) {
+func (runner *testRunner) RunTest(ctx context.Context) *map[string]testService {
 	nodesList, err := runner.k8sClient.ListNodes(ctx, k8s.Selector{
 		LabelSelector: runner.config.NodeSelector.LabelSelector,
 		FieldSelector: runner.config.NodeSelector.FieldSelector,
@@ -70,51 +82,58 @@ func (runner *testRunner) RunTest(ctx context.Context) {
 		runner.logger.Info("cleaned up all resource", "namespace", runner.config.Namespace)
 	}()
 	runner.runPingTest(ctx, testServices)
-}
-
-func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) []testService {
-	namespace, err := runner.k8sClient.CreateNamespace(ctx, runner.makeNamespace(runner.config.Namespace))
-	if err != nil {
-		runner.logger.Fatalw("failed to create test services namespace", "namespace", runner.config.Namespace)
-	}
-	runner.logger.Infow("created test services namespace", "namespace", namespace.GetName())
-
-	testServices := []testService{}
-	for _, node := range nodesList.Items {
-		nodeName := node.GetObjectMeta().GetName()
-		deployment, err := runner.k8sClient.CreateDeployment(ctx, runner.makeDeployment(nodeName))
-		if err != nil {
-			runner.logger.Fatalw("failed to create deployment for node", "node", nodeName)
-		}
-
-		service, err := runner.k8sClient.CreateService(ctx, runner.makeService(nodeName))
-		if err != nil {
-			runner.logger.Fatalw("failed to create service for node", "node", nodeName)
-		}
-
-		ingress, err := runner.k8sClient.CreateIngress(ctx, runner.makeIngress(nodeName))
-		if err != nil {
-			runner.logger.Fatalw("failed to create ingress for node", "node", nodeName)
-		}
-
-		testServices = append(testServices, testService{
-			BaseUrl: ingress.Spec.Rules[0].Host + ingress.Spec.Rules[0].HTTP.Paths[0].Path,
-		})
-		runner.logger.Infow("created test service", "namespace", namespace.GetName(), "node", nodeName,
-			"deployment", deployment.GetName(), "service", service.GetName(), "ingress", ingress.GetName())
-	}
 	return testServices
 }
 
-func (runner *testRunner) runPingTest(ctx context.Context, testSvcs []testService) {
-	runner.logger.Infow("starting ping test", "services", len(testSvcs))
-	for _, testSvc := range testSvcs {
-		testRun := testSvc.TestResults.PingTest
+func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) *map[string]testService {
+	namespace, err := runner.k8sClient.CreateNamespace(ctx, runner.makeNamespace(runner.config.Namespace))
+	if err != nil {
+		runner.logger.Fatalw("failed to create test services namespace", "namespace", runner.config.Namespace, "error", err)
+	}
+	runner.logger.Infow("created test services namespace", "namespace", namespace.GetName())
+
+	testServices := map[string]testService{}
+	for _, node := range nodesList.Items {
+		nodeName := node.GetObjectMeta().GetName()
+		testService := testService{
+			Uuid:        uuid.New().String(),
+			NodeName: nodeName,
+			TestResults: &testResults{},
+		}
+
+		deployment, err := runner.k8sClient.CreateDeployment(ctx, runner.makeDeployment(testService))
+		if err != nil {
+			runner.logger.Fatalw("failed to create deployment for node", "node", nodeName, "error", err)
+		}
+
+		service, err := runner.k8sClient.CreateService(ctx, runner.makeService(testService))
+		if err != nil {
+			runner.logger.Fatalw("failed to create service for node", "node", nodeName, "error", err)
+		}
+
+		ingress, err := runner.k8sClient.CreateIngress(ctx, runner.makeIngress(testService))
+		if err != nil {
+			runner.logger.Fatalw("failed to create ingress for node", "node", nodeName, "error", err)
+		}
+		testService.BaseUrl = ingress.Spec.Rules[0].Host + ingress.Spec.Rules[0].HTTP.Paths[0].Path
+
+		testServices[nodeName] = testService
+		runner.logger.Infow("created test service", "namespace", namespace.GetName(), "node", nodeName,
+			"deployment", deployment.GetName(), "service", service.GetName(), "ingress", ingress.GetName())
+	}
+	return &testServices
+}
+
+func (runner *testRunner) runPingTest(ctx context.Context, testSvcs *map[string]testService) {
+	runner.logger.Infow("starting ping test", "services", len(*testSvcs))
+	for _, testSvc := range *testSvcs {
+		testRun := &testRun{}
 		url := makeUrl(testSvc.BaseUrl, "ping")
 
-		for i := 1; i < 1000; i++ {
-			runner.runTestRequest(ctx, &url, &testRun)
+		for i := 0; i < 1000; i++ {
+			runner.runTestRequest(ctx, &url, testRun)
 		}
+		testSvc.TestResults.PingTest = testRun
 	}
 	runner.logger.Infow("completed ping test")
 }
@@ -125,6 +144,12 @@ func (runner *testRunner) runTestRequest(ctx context.Context, url *string, testR
 	testRun.TotalLatency += time.Since(reqStartTime)
 	if err != nil || resp.StatusCode != 200 {
 		testRun.TotalFailedRequestsCount += 1
+	} else {
+		response := &testServiceResponse{}
+		err = json.NewDecoder(resp.Body).Decode(response)
+		if err != nil || response.Status != statusSuccess {
+			testRun.TotalFailedRequestsCount += 1
+		}
 	}
 	testRun.TotalRequestsCount += 1
 }

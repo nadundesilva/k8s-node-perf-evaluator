@@ -6,7 +6,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var deletePropagation = metav1.DeletePropagationBackground
+var deletePropagation = metav1.DeletePropagationForeground
 var deleteOptions = metav1.DeleteOptions{
 	PropagationPolicy: &deletePropagation,
 }

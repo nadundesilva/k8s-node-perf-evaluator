@@ -7,5 +7,7 @@ nodeSelector:
   fieldSelector: ""
 ingress:
   className: ""
-  hostname: ""
+  tlsSecretName: ""
+  hostnamePostfix: ""
   pathPrefix: "/"
+  annotations: {}

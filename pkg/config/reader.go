@@ -27,22 +27,23 @@ type Selector struct {
 }
 
 type Ingress struct {
-	ClassName   string            `yaml:"className"`
-	Hostname    string            `yaml:"hostname"`
-	PathPrefix  string            `yaml:"pathPrefix"`
-	Annotations map[string]string `yaml:"annotations"`
+	ClassName       *string           `yaml:"className"`
+	HostnamePostfix string            `yaml:"hostnamePostfix"`
+	TlsSecretName   string            `yaml:"tlsSecretName"`
+	PathPrefix      string            `yaml:"pathPrefix"`
+	Annotations     map[string]string `yaml:"annotations"`
 }
 
 func Read(configFile string) (*Config, error) {
 	configContent, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %v", err)
+		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	config := &Config{}
 	err = yaml.Unmarshal(configContent, config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse config file content: %v", err)
+		return nil, fmt.Errorf("failed to parse config file content: %w", err)
 	}
 	mergeDefaults(config)
 	return config, nil
