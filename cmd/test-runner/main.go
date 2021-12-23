@@ -22,7 +22,7 @@ func main() {
 	defer func() {
 		err := zapLogger.Sync()
 		if err != nil {
-			log.Fatalf("Failed to sync logger: %v", err)
+			log.Printf("Failed to sync logger: %v", err)
 		}
 	}()
 	logger := zapLogger.Sugar()
