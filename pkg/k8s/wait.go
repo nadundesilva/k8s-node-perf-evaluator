@@ -15,7 +15,7 @@ func (c *client) WaitForNamespaceDeletion(ctx context.Context, name string) erro
 	if err != nil {
 		return err
 	}
-	for true {
+	for {
 		select {
 		case event := <-w.ResultChan():
 			if event.Type == watch.Deleted {
@@ -25,5 +25,4 @@ func (c *client) WaitForNamespaceDeletion(ctx context.Context, name string) erro
 			return fmt.Errorf("timed out waiting for namespace deletion: %v", name)
 		}
 	}
-	return nil
 }

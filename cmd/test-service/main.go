@@ -21,7 +21,10 @@ func main() {
 	}
 	listenAddress := fmt.Sprintf(":%s", servicePort)
 	log.Printf("Starting listening on %s", listenAddress)
-	http.ListenAndServe(listenAddress, serviceMux)
+	err := http.ListenAndServe(listenAddress, serviceMux)
+	if err != nil {
+		log.Fatalf("Failed to listen to test service: %v", err)
+	}
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {
@@ -33,5 +36,5 @@ func handleCpuIntensiveTask(w http.ResponseWriter, r *http.Request) {
 	for i := 0; i < int(math.Pow(10, 8)); i++ {
 		result += math.Tan(float64(i)) * math.Atan(float64(i))
 	}
-	fmt.Fprintf(w, "Result: %.2f", result)
+	fmt.Fprintf(w, "{\"status\":\"success\",\"result\":\"%.2f\"}", result)
 }

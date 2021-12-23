@@ -21,11 +21,6 @@ type testRunner struct {
 	httpClient *http.Client
 }
 
-type TestRun struct {
-	TestServices []*TestService
-	TestSuites   []*TestSuite
-}
-
 type TestService struct {
 	Uuid     string
 	NodeName string
@@ -46,7 +41,12 @@ type Test struct {
 
 type status string
 
-const STATUS_SUCCESS status = "success"
+const (
+	STATUS_SUCCESS status = "success"
+
+	LOAD_TEST_WORKER_COUNT = 50
+	ITERATION_COUNT        = 10
+)
 
 type testServiceResponse struct {
 	Status status
@@ -63,7 +63,7 @@ func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) *testRunner
 	}
 }
 
-func (runner *testRunner) RunTest(ctx context.Context) (*TestRun, error) {
+func (runner *testRunner) RunTest(ctx context.Context) ([]*TestSuite, error) {
 	nodesList, err := runner.k8sClient.ListNodes(ctx, k8s.Selector{
 		LabelSelector: runner.config.NodeSelector.LabelSelector,
 		FieldSelector: runner.config.NodeSelector.FieldSelector,
@@ -72,29 +72,44 @@ func (runner *testRunner) RunTest(ctx context.Context) (*TestRun, error) {
 		runner.logger.Fatalw("failed to list the nodes in the cluster", "error", err)
 	}
 
-	nodeNames := []string{}
-	for _, node := range nodesList.Items {
-		nodeNames = append(nodeNames, node.GetObjectMeta().GetName())
-	}
-	runner.logger.Infow("resolved available nodes to be tested", "nodes", nodeNames)
-
-	testServices, err := runner.prepareTestServices(ctx, nodesList)
-	defer func() {
-		err := runner.cleanupTestServices(ctx)
-		if err != nil {
-			runner.logger.Warnw("failed to cleanup test services", "namespace", runner.config.Namespace, "error", err)
+	testSuites := []*TestSuite{}
+	runSuite := func(run func(ctx context.Context, testServices []*TestService) *TestSuite) error {
+		nodeNames := []string{}
+		for _, node := range nodesList.Items {
+			nodeNames = append(nodeNames, node.GetObjectMeta().GetName())
 		}
-		runner.logger.Info("cleaned up all resource", "namespace", runner.config.Namespace)
-	}()
+		runner.logger.Infow("resolved available nodes to be tested", "nodes", nodeNames)
+
+		testServices, err := runner.prepareTestServices(ctx, nodesList)
+		defer func() {
+			err := runner.cleanupTestServices(ctx)
+			if err != nil {
+				runner.logger.Warnw("failed to cleanup test services", "namespace", runner.config.Namespace, "error", err)
+			}
+			runner.logger.Info("cleaned up all resource", "namespace", runner.config.Namespace)
+		}()
+		if err != nil {
+			return err
+		}
+		testSuites = append(testSuites, run(ctx, testServices))
+		return nil
+	}
+
+	err = runSuite(func(ctx context.Context, testServices []*TestService) *TestSuite {
+		return runner.runPingTest(ctx, testServices)
+	})
 	if err != nil {
-		return nil, err
+		return testSuites, err
 	}
-	testRun := &TestRun{
-		TestServices: testServices,
-		TestSuites:   []*TestSuite{},
+
+	err = runSuite(func(ctx context.Context, testServices []*TestService) *TestSuite {
+		return runner.runLoadTest(ctx, "CPU Intensive Load Test", "cpu-intensive-task", testServices)
+	})
+	if err != nil {
+		return testSuites, err
 	}
-	testRun.TestSuites = append(testRun.TestSuites, runner.runPingTest(ctx, testServices))
-	return testRun, nil
+
+	return testSuites, nil
 }
 
 func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) ([]*TestService, error) {
@@ -153,9 +168,10 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 }
 
 func (runner *testRunner) runPingTest(ctx context.Context, testSvcs []*TestService) *TestSuite {
-	runner.logger.Infow("starting ping test", "services", len(testSvcs))
+	name := "Ping Test"
+	runner.logger.Infow("starting "+name, "services", len(testSvcs))
 	testSuite := &TestSuite{
-		Name:  "Ping",
+		Name:  name,
 		Tests: []*Test{},
 	}
 	for _, testSvc := range testSvcs {
@@ -164,12 +180,77 @@ func (runner *testRunner) runPingTest(ctx context.Context, testSvcs []*TestServi
 		}
 		url := makeUrl(testSvc.BaseUrl, "ping")
 
-		for i := 0; i < 10; i++ {
+		for i := 0; i < ITERATION_COUNT; i++ {
 			runner.runTestRequest(ctx, &url, test)
 		}
 		testSuite.Tests = append(testSuite.Tests, test)
 	}
-	runner.logger.Infow("completed ping test")
+	runner.logger.Infow("completed " + name)
+	return testSuite
+}
+
+func (runner *testRunner) runLoadTest(ctx context.Context, name string, reqPath string, testSvcs []*TestService) *TestSuite {
+	runner.logger.Infow("starting CPU intensive load test", "services", len(testSvcs))
+	testSuite := &TestSuite{
+		Name:  name,
+		Tests: []*Test{},
+	}
+	for _, testSvc := range testSvcs {
+		url := makeUrl(testSvc.BaseUrl, reqPath)
+
+		workerChannels := []chan int{}
+		workerResultsChannels := []chan Test{}
+		for i := 0; i < LOAD_TEST_WORKER_COUNT; i++ {
+			workerChannel := make(chan int)
+			workerResultsChannel := make(chan Test)
+			go func() {
+				workerTest := Test{
+					NodeName: testSvc.NodeName,
+				}
+				workerChannel <- -1 // Signal ready to start test
+
+				reqCount := <-workerChannel
+				for i := 0; i < reqCount; i++ {
+					runner.runTestRequest(ctx, &url, &workerTest)
+				}
+				workerChannel <- -1 // Signal test completed
+				workerResultsChannel <- workerTest
+			}()
+			workerChannels = append(workerChannels, workerChannel)
+			workerResultsChannels = append(workerResultsChannels, workerResultsChannel)
+		}
+
+		// Wait for workers to be ready
+		for _, workerChannel := range workerChannels {
+			<-workerChannel
+		}
+
+		// Send start reqCount
+		for _, workerChannel := range workerChannels {
+			workerChannel <- ITERATION_COUNT
+		}
+
+		// Wait for workers to complete
+		for _, workerChannel := range workerChannels {
+			<-workerChannel
+		}
+
+		// Merge results
+		finalTest := &Test{
+			NodeName:                 testSvc.NodeName,
+			TotalRequestsCount:       0,
+			TotalFailedRequestsCount: 0,
+			TotalLatency:             0,
+		}
+		for _, workerChannel := range workerResultsChannels {
+			test := <-workerChannel
+			finalTest.TotalRequestsCount += test.TotalRequestsCount
+			finalTest.TotalFailedRequestsCount += test.TotalFailedRequestsCount
+			finalTest.TotalLatency += test.TotalLatency
+		}
+		testSuite.Tests = append(testSuite.Tests, finalTest)
+	}
+	runner.logger.Infow("completed CPU intensive load test")
 	return testSuite
 }
 

@@ -9,8 +9,8 @@ import (
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/evaluator"
 )
 
-func Print(testResults *evaluator.TestRun, output io.Writer) {
-	for _, testSuite := range (*testResults).TestSuites {
+func Print(testSuites []*evaluator.TestSuite, output io.Writer) {
+	for _, testSuite := range testSuites {
 		printTitle(testSuite.Name, output)
 
 		w := tabwriter.NewWriter(output, 1, 1, 3, ' ', 0)

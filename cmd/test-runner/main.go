@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"log"
 	"os"
 
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/config"
@@ -18,7 +19,12 @@ func main() {
 	zapConf := zap.NewDevelopmentConfig()
 	zapConf.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	zapLogger, _ := zapConf.Build()
-	defer zapLogger.Sync()
+	defer func() {
+		err := zapLogger.Sync()
+		if err != nil {
+			log.Fatalf("Failed to sync logger: %v", err)
+		}
+	}()
 	logger := zapLogger.Sugar()
 	logger.Info("Starting Node Performance Evaluator")
 
