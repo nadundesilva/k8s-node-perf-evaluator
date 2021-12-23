@@ -2,19 +2,22 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
-	"fmt"
+	"os"
 
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/config"
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/evaluator"
+	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/reports"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func main() {
 	ctx := context.Background()
 
-	zapLogger, _ := zap.NewProduction()
+	zapConf := zap.NewDevelopmentConfig()
+	zapConf.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	zapLogger, _ := zapConf.Build()
 	defer zapLogger.Sync()
 	logger := zapLogger.Sugar()
 	logger.Info("Starting Node Performance Evaluator")
@@ -28,13 +31,9 @@ func main() {
 	}
 
 	testRunner := evaluator.NewTestRunner(config, logger)
-	testServices, err := testRunner.RunTest(ctx)
+	testRun, err := testRunner.RunTest(ctx)
 	if err != nil {
 		logger.Fatalw("Failed to run test", "error", err)
 	}
-	data, err := json.Marshal(testServices)
-	if err != nil {
-		logger.Fatalw("Failed to convert test services to json", "error", err)
-	}
-	fmt.Printf("Results: %s\n", string(data))
+	reports.Print(testRun, os.Stdout)
 }

@@ -21,19 +21,24 @@ type testRunner struct {
 	httpClient *http.Client
 }
 
-type testService struct {
-	Uuid        string
-	NodeName    string
-	BaseUrl     string
-	TestResults *testResults
+type TestRun struct {
+	TestServices []*TestService
+	TestSuites   []*TestSuite
 }
 
-type testResults struct {
-	PingTest             *testRun
-	CpuIntensiveTaskTest *testRun
+type TestService struct {
+	Uuid     string
+	NodeName string
+	BaseUrl  string
 }
 
-type testRun struct {
+type TestSuite struct {
+	Name  string
+	Tests []*Test
+}
+
+type Test struct {
+	NodeName                 string
 	TotalRequestsCount       int
 	TotalFailedRequestsCount int
 	TotalLatency             time.Duration
@@ -41,7 +46,11 @@ type testRun struct {
 
 type status string
 
-const statusSuccess status = "success"
+const (
+	STATUS_SUCCESS status = "success"
+
+	TEST_ITERATIONS = 1000
+)
 
 type testServiceResponse struct {
 	Status status
@@ -58,7 +67,7 @@ func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) *testRunner
 	}
 }
 
-func (runner *testRunner) RunTest(ctx context.Context) (*map[string]testService, error) {
+func (runner *testRunner) RunTest(ctx context.Context) (*TestRun, error) {
 	nodesList, err := runner.k8sClient.ListNodes(ctx, k8s.Selector{
 		LabelSelector: runner.config.NodeSelector.LabelSelector,
 		FieldSelector: runner.config.NodeSelector.FieldSelector,
@@ -84,11 +93,15 @@ func (runner *testRunner) RunTest(ctx context.Context) (*map[string]testService,
 	if err != nil {
 		return nil, err
 	}
-	runner.runPingTest(ctx, testServices)
-	return testServices, nil
+	testRun := &TestRun{
+		TestServices: testServices,
+		TestSuites:   []*TestSuite{},
+	}
+	testRun.TestSuites = append(testRun.TestSuites, runner.runPingTest(ctx, testServices))
+	return testRun, nil
 }
 
-func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) (*map[string]testService, error) {
+func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) ([]*TestService, error) {
 	namespace, err := runner.k8sClient.GetNamespace(ctx, runner.config.Namespace)
 	if err != nil {
 		runner.logger.Fatalw("failed to check if the test services namespace existed", "namespace", runner.config.Namespace, "error", err)
@@ -112,66 +125,72 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 	}
 	runner.logger.Infow("created test services namespace", "namespace", namespace.GetName())
 
-	testServices := map[string]testService{}
+	testServices := []*TestService{}
 	for _, node := range nodesList.Items {
 		nodeName := node.GetObjectMeta().GetName()
-		testService := testService{
-			Uuid:        uuid.New().String(),
+		testService := &TestService{
+			Uuid:     uuid.New().String(),
 			NodeName: nodeName,
-			TestResults: &testResults{},
 		}
 
-		deployment, err := runner.k8sClient.CreateDeployment(ctx, runner.makeDeployment(testService))
+		deployment, err := runner.k8sClient.CreateDeployment(ctx, runner.makeDeployment(*testService))
 		if err != nil {
 			runner.logger.Fatalw("failed to create deployment for node", "node", nodeName, "error", err)
 		}
 
-		service, err := runner.k8sClient.CreateService(ctx, runner.makeService(testService))
+		service, err := runner.k8sClient.CreateService(ctx, runner.makeService(*testService))
 		if err != nil {
 			runner.logger.Fatalw("failed to create service for node", "node", nodeName, "error", err)
 		}
 
-		ingress, err := runner.k8sClient.CreateIngress(ctx, runner.makeIngress(testService))
+		ingress, err := runner.k8sClient.CreateIngress(ctx, runner.makeIngress(*testService))
 		if err != nil {
 			runner.logger.Fatalw("failed to create ingress for node", "node", nodeName, "error", err)
 		}
 		testService.BaseUrl = ingress.Spec.Rules[0].Host + ingress.Spec.Rules[0].HTTP.Paths[0].Path
 
-		testServices[nodeName] = testService
+		testServices = append(testServices, testService)
 		runner.logger.Infow("created test service", "namespace", namespace.GetName(), "node", nodeName,
 			"deployment", deployment.GetName(), "service", service.GetName(), "ingress", ingress.GetName())
 	}
-	return &testServices, nil
+	return testServices, nil
 }
 
-func (runner *testRunner) runPingTest(ctx context.Context, testSvcs *map[string]testService) {
-	runner.logger.Infow("starting ping test", "services", len(*testSvcs))
-	for _, testSvc := range *testSvcs {
-		testRun := &testRun{}
+func (runner *testRunner) runPingTest(ctx context.Context, testSvcs []*TestService) *TestSuite {
+	runner.logger.Infow("starting ping test", "services", len(testSvcs))
+	testSuite := &TestSuite{
+		Name:  "Ping",
+		Tests: []*Test{},
+	}
+	for _, testSvc := range testSvcs {
+		test := &Test{
+			NodeName: testSvc.NodeName,
+		}
 		url := makeUrl(testSvc.BaseUrl, "ping")
 
-		for i := 0; i < 1000; i++ {
-			runner.runTestRequest(ctx, &url, testRun)
+		for i := 0; i < TEST_ITERATIONS; i++ {
+			runner.runTestRequest(ctx, &url, test)
 		}
-		testSvc.TestResults.PingTest = testRun
+		testSuite.Tests = append(testSuite.Tests, test)
 	}
 	runner.logger.Infow("completed ping test")
+	return testSuite
 }
 
-func (runner *testRunner) runTestRequest(ctx context.Context, url *string, testRun *testRun) {
+func (runner *testRunner) runTestRequest(ctx context.Context, url *string, test *Test) {
 	reqStartTime := time.Now()
 	resp, err := runner.httpClient.Get(*url)
-	testRun.TotalLatency += time.Since(reqStartTime)
+	test.TotalLatency += time.Since(reqStartTime)
 	if err != nil || resp.StatusCode != 200 {
-		testRun.TotalFailedRequestsCount += 1
+		test.TotalFailedRequestsCount += 1
 	} else {
 		response := &testServiceResponse{}
 		err = json.NewDecoder(resp.Body).Decode(response)
-		if err != nil || response.Status != statusSuccess {
-			testRun.TotalFailedRequestsCount += 1
+		if err != nil || response.Status != STATUS_SUCCESS {
+			test.TotalFailedRequestsCount += 1
 		}
 	}
-	testRun.TotalRequestsCount += 1
+	test.TotalRequestsCount += 1
 }
 
 func (runner *testRunner) cleanupTestServices(ctx context.Context) error {

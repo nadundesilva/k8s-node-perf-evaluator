@@ -24,7 +24,7 @@ func (runner *testRunner) makeNamespace(namespace string) *corev1.Namespace {
 	}
 }
 
-func (runner *testRunner) makeDeployment(testService testService) *appsv1.Deployment {
+func (runner *testRunner) makeDeployment(testService TestService) *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      makeName(testService),
@@ -77,7 +77,7 @@ func (runner *testRunner) makeDeployment(testService testService) *appsv1.Deploy
 	}
 }
 
-func (runner *testRunner) makeService(testService testService) *corev1.Service {
+func (runner *testRunner) makeService(testService TestService) *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      makeName(testService),
@@ -98,7 +98,7 @@ func (runner *testRunner) makeService(testService testService) *corev1.Service {
 	}
 }
 
-func (runner *testRunner) makeIngress(testService testService) *networkingv1.Ingress {
+func (runner *testRunner) makeIngress(testService TestService) *networkingv1.Ingress {
 	host := testService.Uuid + runner.config.Ingress.HostnamePostfix
 	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -142,11 +142,11 @@ func (runner *testRunner) makeIngress(testService testService) *networkingv1.Ing
 	}
 }
 
-func makeName(testService testService) string {
+func makeName(testService TestService) string {
 	return fmt.Sprintf("test-service-%s", testService.Uuid)
 }
 
-func makeLabels(testService testService) map[string]string {
+func makeLabels(testService TestService) map[string]string {
 	return map[string]string{
 		"node": testService.NodeName,
 		"type": "test-service",
