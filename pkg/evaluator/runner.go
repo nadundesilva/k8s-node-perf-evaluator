@@ -46,11 +46,7 @@ type Test struct {
 
 type status string
 
-const (
-	STATUS_SUCCESS status = "success"
-
-	TEST_ITERATIONS = 1000
-)
+const STATUS_SUCCESS status = "success"
 
 type testServiceResponse struct {
 	Status status
@@ -147,7 +143,7 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 		if err != nil {
 			runner.logger.Fatalw("failed to create ingress for node", "node", nodeName, "error", err)
 		}
-		testService.BaseUrl = ingress.Spec.Rules[0].Host + ingress.Spec.Rules[0].HTTP.Paths[0].Path
+		testService.BaseUrl = runner.config.Ingress.ProtocolScheme + "://" + ingress.Spec.Rules[0].Host + ingress.Spec.Rules[0].HTTP.Paths[0].Path
 
 		testServices = append(testServices, testService)
 		runner.logger.Infow("created test service", "namespace", namespace.GetName(), "node", nodeName,
@@ -168,7 +164,7 @@ func (runner *testRunner) runPingTest(ctx context.Context, testSvcs []*TestServi
 		}
 		url := makeUrl(testSvc.BaseUrl, "ping")
 
-		for i := 0; i < TEST_ITERATIONS; i++ {
+		for i := 0; i < 10; i++ {
 			runner.runTestRequest(ctx, &url, test)
 		}
 		testSuite.Tests = append(testSuite.Tests, test)

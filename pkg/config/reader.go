@@ -30,6 +30,7 @@ type Ingress struct {
 	ClassName       *string           `yaml:"className"`
 	HostnamePostfix string            `yaml:"hostnamePostfix"`
 	TlsSecretName   string            `yaml:"tlsSecretName"`
+	ProtocolScheme  string            `yaml:"protocolScheme"`
 	PathPrefix      string            `yaml:"pathPrefix"`
 	Annotations     map[string]string `yaml:"annotations"`
 }

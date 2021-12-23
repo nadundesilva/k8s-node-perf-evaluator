@@ -14,7 +14,7 @@ func Print(testResults *evaluator.TestRun, output io.Writer) {
 		printTitle(testSuite.Name, output)
 
 		w := tabwriter.NewWriter(output, 1, 1, 3, ' ', 0)
-		fmt.Fprintln(w, "NODE\tAVERAGE LATENCY\tFAILED_REQUESTS\t")
+		fmt.Fprintln(w, "NODE\tAVERAGE LATENCY\tFAILED REQUESTS\t")
 		for _, test := range testSuite.Tests {
 			metrics := calculateMetrics(test)
 			fmt.Fprintf(w, "%s\t%s\t%.2f%% (%d)\t\n", test.NodeName, metrics.averageLatency, metrics.failedPercentage, metrics.failedRequestCount)

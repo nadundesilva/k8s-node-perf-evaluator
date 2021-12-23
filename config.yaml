@@ -8,6 +8,7 @@ nodeSelector:
 ingress:
   className: ""
   tlsSecretName: ""
+  protocolScheme: "http"
   hostnamePostfix: ""
   pathPrefix: "/"
   annotations: {}
