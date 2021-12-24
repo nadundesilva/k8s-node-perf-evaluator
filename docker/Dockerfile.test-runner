@@ -9,6 +9,8 @@ RUN GIT_REVISION=${GIT_REVISION} PROJECT_PKG=${PROJECT_PKG} bash /repo/build-bin
 
 FROM alpine:3.15.0
 
+WORKDIR /app
+
 COPY --from=builder /repo/out/test-runner /app/test-runner
 
 ENTRYPOINT ["/app/test-runner"]

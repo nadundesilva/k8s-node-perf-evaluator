@@ -31,6 +31,15 @@ jobs:
       matrix:
         package: ["test-service", "test-runner"]
     steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+      - name: Available platforms
+        run: echo ${{ steps.buildx.outputs.platforms }}
       - name: Login to the Container registry
         uses: docker/login-action@v1
         with:
@@ -40,6 +49,7 @@ jobs:
       - name: Build & Push Docker Image
         uses: docker/build-push-action@v2
         with:
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           build-args: |
             GIT_REVISION=${{ github.sha }}
             PROJECT_PKG="github.com/${{ github.repository }}"
