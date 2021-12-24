@@ -33,7 +33,7 @@ func handlePing(w http.ResponseWriter, r *http.Request) {
 
 func handleCpuIntensiveTask(w http.ResponseWriter, r *http.Request) {
 	var result float64 = 0
-	for i := 0; i < int(math.Pow(10, 8)); i++ {
+	for i := 0; i < int(math.Pow(10, 5)); i++ {
 		result += math.Tan(float64(i)) * math.Atan(float64(i))
 	}
 	fmt.Fprintf(w, "{\"status\":\"success\",\"result\":\"%.2f\"}", result)

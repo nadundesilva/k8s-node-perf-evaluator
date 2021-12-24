@@ -34,5 +34,6 @@ docker run --name=k8s-node-performance-evaluator \
 
 Run the following command to execute tests
 ```bash
-go run cmd/test-runner/main.go
+go build -o "${PWD}/out/test-runner" "${PWD}/cmd/test-runner"
+./out/test-runner
 ```

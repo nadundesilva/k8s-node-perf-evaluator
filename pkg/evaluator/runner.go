@@ -44,7 +44,7 @@ type status string
 const (
 	STATUS_SUCCESS status = "success"
 
-	LOAD_TEST_WORKER_COUNT = 50
+	LOAD_TEST_WORKER_COUNT = 10
 	ITERATION_COUNT        = 10
 )
 
@@ -259,11 +259,13 @@ func (runner *testRunner) runTestRequest(ctx context.Context, url *string, test 
 	resp, err := runner.httpClient.Get(*url)
 	test.TotalLatency += time.Since(reqStartTime)
 	if err != nil || resp.StatusCode != 200 {
+		runner.logger.Fatalw("Error 1", "error", err)
 		test.TotalFailedRequestsCount += 1
 	} else {
 		response := &testServiceResponse{}
 		err = json.NewDecoder(resp.Body).Decode(response)
 		if err != nil || response.Status != STATUS_SUCCESS {
+			runner.logger.Fatalw("Error 2", "error", err)
 			test.TotalFailedRequestsCount += 1
 		}
 	}
