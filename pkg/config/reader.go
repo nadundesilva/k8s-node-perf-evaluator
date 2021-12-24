@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
@@ -40,6 +41,7 @@ func Read(configFile string) (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
+	configContent = []byte(os.ExpandEnv(string(configContent)))
 
 	config := &Config{}
 	err = yaml.Unmarshal(configContent, config)

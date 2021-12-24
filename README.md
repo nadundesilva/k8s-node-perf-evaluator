@@ -9,3 +9,30 @@ This repository contains a set of tools for testing the performance of all the n
 
 * Ping test
 * CPU intensive load test
+
+## How to Use
+
+### Updating Configurations
+
+1. Clone this repository and navigate to the root of the directory.
+2. Update `config.yaml` with the proper configurations about the cluster (The exact configurations will change based on the method of running the test as well as the cluster).
+
+### How to run Test
+
+#### Run using Docker Image
+
+Run the following command to execute tests
+```bash
+docker run --name=k8s-node-performance-evaluator \
+    --rm \
+    --volume=${PWD}/config.yaml:/app/config.yaml:ro \
+    --volume=${HOME}/.kube/config:/.kube/config:ro \
+    ghcr.io/nadundesilva/tools/k8s-node-perf-evaluator/test-runner:latest
+```
+
+#### Build and Run from Source
+
+Run the following command to execute tests
+```bash
+go run cmd/test-runner/main.go
+```
