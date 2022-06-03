@@ -27,7 +27,7 @@ docker run --name=k8s-node-performance-evaluator \
     --rm \
     --volume=${PWD}/config.yaml:/app/config.yaml:ro \
     --volume=${HOME}/.kube/config:/.kube/config:ro \
-    ghcr.io/nadundesilva/tools/k8s-node-perf-evaluator/test-runner:latest
+    nadunrds/k8s-node-perf-evaluator-test-runner:latest
 ```
 
 #### Build and Run from Source
