@@ -11,6 +11,6 @@ var deleteOptions = metav1.DeleteOptions{
 	PropagationPolicy: &deletePropagation,
 }
 
-func (c *client) DeleteNamespace(ctx context.Context, name string) (error) {
+func (c *client) DeleteNamespace(ctx context.Context, name string) error {
 	return c.clientset.CoreV1().Namespaces().Delete(ctx, name, deleteOptions)
 }

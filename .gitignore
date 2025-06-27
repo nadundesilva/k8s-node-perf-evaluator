@@ -1,4 +1,4 @@
-config.yaml
+**/__pycache__/
 
 # Output files
 out/

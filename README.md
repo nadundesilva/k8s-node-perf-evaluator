@@ -6,8 +6,8 @@ This repository contains a set of tools for testing the performance of all the n
 
 ## Supported Test Types
 
-* Ping test
-* CPU intensive load test
+- Ping test
+- CPU intensive load test
 
 ## How to Use
 
@@ -21,6 +21,7 @@ This repository contains a set of tools for testing the performance of all the n
 #### Run using Docker Image
 
 Run the following command to execute tests
+
 ```bash
 docker run --name=k8s-node-performance-evaluator \
     --rm \
@@ -32,6 +33,7 @@ docker run --name=k8s-node-performance-evaluator \
 #### Build and Run from Source
 
 Run the following command to execute tests
+
 ```bash
 go build -o "${PWD}/out/test-runner" "${PWD}/cmd/test-runner"
 ./out/test-runner

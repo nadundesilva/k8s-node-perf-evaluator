@@ -1,4 +1,4 @@
-FROM golang:1.17.5 as builder
+FROM golang:1.17.5 AS builder
 
 ARG GIT_REVISION=""
 ARG PROJECT_PKG=""
@@ -7,11 +7,25 @@ WORKDIR /repo
 COPY ./ /repo/
 RUN GIT_REVISION=${GIT_REVISION} PROJECT_PKG=${PROJECT_PKG} bash /repo/build-binary.sh test-runner
 
+#checkov:skip=CKV_DOCKER_2: no need for a healthcheck since this is a job
 FROM alpine:3.15.0
 
-WORKDIR /app
-ENV HOME=/app
+ARG USER_ID="10000"
+ARG GROUP_ID="30000"
 
-COPY --from=builder /repo/out/test-runner /app/test-runner
+RUN addgroup -S \
+        -g ${GROUP_ID} \
+        k8s-node-perf-evaluator && \
+    adduser -S \
+        -u ${USER_ID} \
+        -g ${GROUP_ID} \
+        -s /bin/ash \
+        test-runner
+
+COPY --from=builder --chown=${USER_ID}:${GROUP_ID} /repo/out/test-runner /app/test-runner
+WORKDIR /app
+
+SHELL ["/bin/ash", "-c"]
+USER ${USER_ID}:${GROUP_ID}
 
 ENTRYPOINT ["/app/test-runner"]

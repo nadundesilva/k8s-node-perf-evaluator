@@ -2,7 +2,7 @@
 
 set -e
 
-SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}" )" && pwd)
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 BINARY=$1
 GIT_REVISION="${GIT_REVISION:-$(git rev-parse --verify HEAD)}"

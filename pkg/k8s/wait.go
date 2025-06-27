@@ -9,7 +9,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-
 func (c *client) WaitForNamespaceDeletion(ctx context.Context, name string) error {
 	w, err := c.clientset.CoreV1().Namespaces().Watch(ctx, metav1.ListOptions{})
 	if err != nil {

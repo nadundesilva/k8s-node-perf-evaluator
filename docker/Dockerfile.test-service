@@ -1,4 +1,4 @@
-FROM golang:1.17.5 as builder
+FROM golang:1.17.5 AS builder
 
 ARG GIT_REVISION=""
 ARG PROJECT_PKG=""
@@ -9,9 +9,34 @@ RUN GIT_REVISION=${GIT_REVISION} PROJECT_PKG=${PROJECT_PKG} bash /repo/build-bin
 
 FROM alpine:3.15.0
 
-EXPOSE 8080
+ARG USER_ID="10000"
+ARG GROUP_ID="30000"
+
+RUN addgroup -S \
+        -g ${GROUP_ID} \
+        k8s-node-perf-evaluator && \
+    adduser -S \
+        -u ${USER_ID} \
+        -g ${GROUP_ID} \
+        -s /bin/ash \
+        test-service
+
+COPY --from=builder --chown=${USER_ID}:${GROUP_ID} /repo/out/test-service /app/test-service
 WORKDIR /app
 
-COPY --from=builder /repo/out/test-service /app/test-service
+ENV SERVER_BIND_HOST="0.0.0.0"
+ENV SERVER_BIND_PORT="8080"
+ENV HEALTHCHECK_PATH="/health"
+
+SHELL ["/bin/ash", "-c"]
+USER ${USER_ID}:${GROUP_ID}
+
+EXPOSE 8080
+
+HEALTHCHECK --start-period=10s \
+    --retries=3 \
+    --interval=10s \
+    --timeout=10s \
+    CMD curl -f "http://${SERVER_BIND_HOST}:${SERVER_BIND_PORT}${HEALTHCHECK_PATH}" || exit 1
 
 ENTRYPOINT ["/app/test-service"]

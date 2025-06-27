@@ -13,6 +13,7 @@ var servicePort = os.Getenv("SERVICE_PORT")
 func main() {
 	serviceMux := http.NewServeMux()
 
+	serviceMux.Handle("/health", http.HandlerFunc(handleHealth))
 	serviceMux.Handle("/ping", http.HandlerFunc(handlePing))
 	serviceMux.Handle("/cpu-intensive-task", http.HandlerFunc(handleCpuIntensiveTask))
 
@@ -25,6 +26,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen to test service: %v", err)
 	}
+}
+
+func handleHealth(w http.ResponseWriter, r *http.Request) {
+	// Do Nothing
 }
 
 func handlePing(w http.ResponseWriter, r *http.Request) {

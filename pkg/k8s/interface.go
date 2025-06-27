@@ -18,7 +18,7 @@ type Interface interface {
 
 	GetNamespace(ctx context.Context, name string) (*corev1.Namespace, error)
 
-	DeleteNamespace(ctx context.Context, name string) (error)
+	DeleteNamespace(ctx context.Context, name string) error
 
 	WaitForNamespaceDeletion(ctx context.Context, name string) error
 }
