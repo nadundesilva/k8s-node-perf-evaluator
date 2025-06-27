@@ -1,0 +1,20 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        "mergeConfidence:all-badges",
+        ":rebaseStalePrs",
+        ":separateMajorReleases",
+        ":reviewer(nadundesilva)"
+    ],
+    "labels": ["Type/DependencyUpdate"],
+    "ignoreDeps": ["eslint"],
+    "rangeStrategy": "bump",
+    "packageRules": [
+        {
+            "matchUpdateTypes": ["patch", "minor"],
+            "groupName": "Non-Major Updates",
+            "automerge": true
+        }
+    ]
+}
