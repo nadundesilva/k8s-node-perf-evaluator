@@ -9,6 +9,7 @@ RUN GIT_REVISION=${GIT_REVISION} PROJECT_PKG=${PROJECT_PKG} bash /repo/build-bin
 
 FROM alpine:3.22
 
+# renovate: datasource=repology depName=alpine_3_22/curl versioning=deb
 ARG CURL_VERSION="8.14.1-r1"
 
 ARG USER_ID="10000"
