@@ -24,6 +24,6 @@ func Print(testSuites []*evaluator.TestSuite, output io.Writer) {
 }
 
 func printTitle(title string, output io.Writer) {
-	verticalLine := strings.Repeat("=", len(title) + 2)
+	verticalLine := strings.Repeat("=", len(title)+2)
 	fmt.Fprintf(output, "\n%s\n %s \n%s\n\n", verticalLine, title, verticalLine)
 }
