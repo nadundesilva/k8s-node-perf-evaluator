@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -30,14 +29,14 @@ type Selector struct {
 type Ingress struct {
 	ClassName       *string           `yaml:"className"`
 	HostnamePostfix string            `yaml:"hostnamePostfix"`
-	TlsSecretName   string            `yaml:"tlsSecretName"`
+	TLSSecretName   string            `yaml:"tlsSecretName"`
 	ProtocolScheme  string            `yaml:"protocolScheme"`
 	PathPrefix      string            `yaml:"pathPrefix"`
 	Annotations     map[string]string `yaml:"annotations"`
 }
 
 func Read(configFile string) (*Config, error) {
-	configContent, err := ioutil.ReadFile(configFile)
+	configContent, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}

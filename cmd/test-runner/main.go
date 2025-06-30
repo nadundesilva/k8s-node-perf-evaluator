@@ -18,9 +18,13 @@ func main() {
 
 	zapConf := zap.NewDevelopmentConfig()
 	zapConf.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	zapLogger, _ := zapConf.Build()
+	zapLogger, err := zapConf.Build()
+	if err != nil {
+		log.Printf("Failed to create logger: %v", err)
+		return
+	}
 	defer func() {
-		err := zapLogger.Sync()
+		err = zapLogger.Sync()
 		if err != nil {
 			log.Printf("Failed to sync logger: %v", err)
 		}
@@ -41,5 +45,8 @@ func main() {
 	if err != nil {
 		logger.Fatalw("Failed to run test", "error", err)
 	}
-	reports.Print(testRun, os.Stdout)
+	err = reports.Print(testRun, os.Stdout)
+	if err != nil {
+		logger.Fatalw("Failed to print report", "error", err)
+	}
 }

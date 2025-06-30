@@ -11,7 +11,7 @@ type client struct {
 
 var _ Interface = (*client)(nil)
 
-func NewFromKubeConfig(kubeConfigPath string) *client {
+func NewFromKubeConfig(kubeConfigPath string) Interface {
 	// use the current context in kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {

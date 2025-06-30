@@ -14,6 +14,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+type TestRunnerInterface interface {
+	RunTest(ctx context.Context) ([]*TestSuite, error)
+}
+
 type testRunner struct {
 	config     *config.Config
 	logger     *zap.SugaredLogger
@@ -22,9 +26,9 @@ type testRunner struct {
 }
 
 type TestService struct {
-	Uuid     string
+	UUID     string
 	NodeName string
-	BaseUrl  string
+	BaseURL  string
 }
 
 type TestSuite struct {
@@ -42,17 +46,17 @@ type Test struct {
 type status string
 
 const (
-	STATUS_SUCCESS status = "success"
+	statusSuccess status = "success"
 
-	LOAD_TEST_WORKER_COUNT = 10
-	ITERATION_COUNT        = 10
+	loadTestWorkerCount = 10
+	iterationCount      = 10
 )
 
 type testServiceResponse struct {
 	Status status
 }
 
-func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) *testRunner {
+func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) TestRunnerInterface {
 	return &testRunner{
 		config:    config,
 		logger:    logger,
@@ -80,9 +84,10 @@ func (runner *testRunner) RunTest(ctx context.Context) ([]*TestSuite, error) {
 		}
 		runner.logger.Infow("resolved available nodes to be tested", "nodes", nodeNames)
 
-		testServices, err := runner.prepareTestServices(ctx, nodesList)
+		var testServices []*TestService
+		testServices, err = runner.prepareTestServices(ctx, nodesList)
 		defer func() {
-			err := runner.cleanupTestServices(ctx)
+			err = runner.cleanupTestServices(ctx)
 			if err != nil {
 				runner.logger.Warnw("failed to cleanup test services", "namespace", runner.config.Namespace, "error", err)
 			}
@@ -123,7 +128,7 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 			return nil, err
 		}
 		runner.logger.Infow("waiting for namespace deletion to complete", "namespace", namespace.GetName())
-		err := runner.k8sClient.WaitForNamespaceDeletion(ctx, namespace.GetName())
+		err = runner.k8sClient.WaitForNamespaceDeletion(ctx, namespace.GetName())
 		if err != nil {
 			return nil, err
 		}
@@ -140,7 +145,7 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 	for _, node := range nodesList.Items {
 		nodeName := node.GetObjectMeta().GetName()
 		testService := &TestService{
-			Uuid:     uuid.New().String(),
+			UUID:     uuid.New().String(),
 			NodeName: nodeName,
 		}
 
@@ -158,7 +163,7 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 		if err != nil {
 			runner.logger.Fatalw("failed to create ingress for node", "node", nodeName, "error", err)
 		}
-		testService.BaseUrl = runner.config.Ingress.ProtocolScheme + "://" + ingress.Spec.Rules[0].Host + ingress.Spec.Rules[0].HTTP.Paths[0].Path
+		testService.BaseURL = runner.config.Ingress.ProtocolScheme + "://" + ingress.Spec.Rules[0].Host + ingress.Spec.Rules[0].HTTP.Paths[0].Path
 
 		testServices = append(testServices, testService)
 		runner.logger.Infow("created test service", "namespace", namespace.GetName(), "node", nodeName,
@@ -178,9 +183,9 @@ func (runner *testRunner) runPingTest(ctx context.Context, testSvcs []*TestServi
 		test := &Test{
 			NodeName: testSvc.NodeName,
 		}
-		url := makeUrl(testSvc.BaseUrl, "ping")
+		url := makeURL(testSvc.BaseURL, "ping")
 
-		for i := 0; i < ITERATION_COUNT; i++ {
+		for i := 0; i < iterationCount; i++ {
 			runner.runTestRequest(ctx, &url, test)
 		}
 		testSuite.Tests = append(testSuite.Tests, test)
@@ -196,11 +201,11 @@ func (runner *testRunner) runLoadTest(ctx context.Context, name string, reqPath 
 		Tests: []*Test{},
 	}
 	for _, testSvc := range testSvcs {
-		url := makeUrl(testSvc.BaseUrl, reqPath)
+		url := makeURL(testSvc.BaseURL, reqPath)
 
 		workerChannels := []chan int{}
 		workerResultsChannels := []chan Test{}
-		for i := 0; i < LOAD_TEST_WORKER_COUNT; i++ {
+		for i := 0; i < loadTestWorkerCount; i++ {
 			workerChannel := make(chan int)
 			workerResultsChannel := make(chan Test)
 			go func() {
@@ -227,7 +232,7 @@ func (runner *testRunner) runLoadTest(ctx context.Context, name string, reqPath 
 
 		// Send start reqCount
 		for _, workerChannel := range workerChannels {
-			workerChannel <- ITERATION_COUNT
+			workerChannel <- iterationCount
 		}
 
 		// Wait for workers to complete
@@ -255,30 +260,33 @@ func (runner *testRunner) runLoadTest(ctx context.Context, name string, reqPath 
 }
 
 func (runner *testRunner) runTestRequest(ctx context.Context, url *string, test *Test) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, (*url), nil)
+	if err != nil {
+		runner.logger.Fatalw("Failed to create request", "error", err)
+	}
+
 	reqStartTime := time.Now()
-	resp, err := runner.httpClient.Get(*url)
+	resp, err := runner.httpClient.Do(req)
 	test.TotalLatency += time.Since(reqStartTime)
 	if err != nil || resp.StatusCode != 200 {
-		runner.logger.Fatalw("Error 1", "error", err)
-		test.TotalFailedRequestsCount += 1
+		test.TotalFailedRequestsCount++
 	} else {
 		response := &testServiceResponse{}
 		err = json.NewDecoder(resp.Body).Decode(response)
-		if err != nil || response.Status != STATUS_SUCCESS {
-			runner.logger.Fatalw("Error 2", "error", err)
-			test.TotalFailedRequestsCount += 1
+		if err != nil || response.Status != statusSuccess {
+			test.TotalFailedRequestsCount++
 		}
 	}
-	test.TotalRequestsCount += 1
+	test.TotalRequestsCount++
 }
 
 func (runner *testRunner) cleanupTestServices(ctx context.Context) error {
 	return runner.k8sClient.DeleteNamespace(ctx, runner.config.Namespace)
 }
 
-func makeUrl(baseUrl, path string) string {
-	url := baseUrl
-	if !strings.HasSuffix(baseUrl, "/") {
+func makeURL(baseURL, path string) string {
+	url := baseURL
+	if !strings.HasSuffix(baseURL, "/") {
 		url += "/"
 	}
 	return url + path

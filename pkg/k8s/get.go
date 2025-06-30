@@ -15,9 +15,8 @@ func (c *client) GetNamespace(ctx context.Context, name string) (*corev1.Namespa
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return nil, nil
-		} else {
-			return nil, err
 		}
+		return nil, err
 	}
 	return namespace, nil
 }

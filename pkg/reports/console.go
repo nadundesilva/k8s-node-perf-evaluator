@@ -9,21 +9,35 @@ import (
 	"github.com/nadundesilva/k8s-node-perf-evaluator/pkg/evaluator"
 )
 
-func Print(testSuites []*evaluator.TestSuite, output io.Writer) {
+func Print(testSuites []*evaluator.TestSuite, output io.Writer) error {
 	for _, testSuite := range testSuites {
-		printTitle(testSuite.Name, output)
+		err := printTitle(testSuite.Name, output)
+		if err != nil {
+			return fmt.Errorf("failed to print title of console report %s: %w", testSuite.Name, err)
+		}
 
 		w := tabwriter.NewWriter(output, 1, 1, 3, ' ', 0)
-		fmt.Fprintln(w, "NODE\tAVERAGE LATENCY\tFAILED REQUESTS\t")
+		_, err = fmt.Fprintln(w, "NODE\tAVERAGE LATENCY\tFAILED REQUESTS\t")
+		if err != nil {
+			return fmt.Errorf("failed to write header of console report %s: %w", testSuite.Name, err)
+		}
 		for _, test := range testSuite.Tests {
 			metrics := calculateMetrics(test)
-			fmt.Fprintf(w, "%s\t%s\t%.2f%% (%d)\t\n", test.NodeName, metrics.averageLatency, metrics.failedPercentage, metrics.failedRequestCount)
+			_, err = fmt.Fprintf(w, "%s\t%s\t%.2f%% (%d)\t\n", test.NodeName, metrics.averageLatency, metrics.failedPercentage, metrics.failedRequestCount)
+			if err != nil {
+				return fmt.Errorf("failed to write row of console report %s: %w", testSuite.Name, err)
+			}
 		}
-		w.Flush()
+		err = w.Flush()
+		if err != nil {
+			return fmt.Errorf("failed to flush console report %s: %w", testSuite.Name, err)
+		}
 	}
+	return nil
 }
 
-func printTitle(title string, output io.Writer) {
+func printTitle(title string, output io.Writer) error {
 	verticalLine := strings.Repeat("=", len(title)+2)
-	fmt.Fprintf(output, "\n%s\n %s \n%s\n\n", verticalLine, title, verticalLine)
+	_, err := fmt.Fprintf(output, "\n%s\n %s \n%s\n\n", verticalLine, title, verticalLine)
+	return err
 }

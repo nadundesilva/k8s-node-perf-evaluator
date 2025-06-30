@@ -11,10 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-const TEST_SERVICE_PORT = 8080
-const TEST_SERVICE_PORT_NAME = "http-port"
-
-var INGRESS_PATH_TYPE = networkingv1.PathTypePrefix
+const testServicePort = 8080
+const testServicePortName = "http-port"
 
 func (runner *testRunner) makeNamespace(namespace string) *corev1.Namespace {
 	return &corev1.Namespace{
@@ -45,15 +43,15 @@ func (runner *testRunner) makeDeployment(testService TestService) *appsv1.Deploy
 							Image: runner.config.TestService.Image,
 							Ports: []corev1.ContainerPort{
 								{
-									Name:          TEST_SERVICE_PORT_NAME,
-									ContainerPort: TEST_SERVICE_PORT,
+									Name:          testServicePortName,
+									ContainerPort: testServicePort,
 									Protocol:      corev1.ProtocolTCP,
 								},
 							},
 							Env: []corev1.EnvVar{
 								{
 									Name:  "SERVICE_PORT",
-									Value: fmt.Sprint(TEST_SERVICE_PORT),
+									Value: fmt.Sprint(testServicePort),
 								},
 							},
 							Resources: corev1.ResourceRequirements{
@@ -88,10 +86,10 @@ func (runner *testRunner) makeService(testService TestService) *corev1.Service {
 			Selector: makeLabels(testService),
 			Ports: []corev1.ServicePort{
 				{
-					Name:       TEST_SERVICE_PORT_NAME,
-					Port:       TEST_SERVICE_PORT,
+					Name:       testServicePortName,
+					Port:       testServicePort,
 					Protocol:   corev1.ProtocolTCP,
-					TargetPort: intstr.FromString(TEST_SERVICE_PORT_NAME),
+					TargetPort: intstr.FromString(testServicePortName),
 				},
 			},
 		},
@@ -99,7 +97,7 @@ func (runner *testRunner) makeService(testService TestService) *corev1.Service {
 }
 
 func (runner *testRunner) makeIngress(testService TestService) *networkingv1.Ingress {
-	host := testService.Uuid + runner.config.Ingress.HostnamePostfix
+	host := testService.UUID + runner.config.Ingress.HostnamePostfix
 	return &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        makeName(testService),
@@ -116,13 +114,17 @@ func (runner *testRunner) makeIngress(testService TestService) *networkingv1.Ing
 						HTTP: &networkingv1.HTTPIngressRuleValue{
 							Paths: []networkingv1.HTTPIngressPath{
 								{
-									Path:     runner.config.Ingress.PathPrefix,
-									PathType: &INGRESS_PATH_TYPE,
+									Path: runner.config.Ingress.PathPrefix,
+									PathType: func() *networkingv1.PathType {
+										pathType := networkingv1.PathTypePrefix
+										return &pathType
+
+									}(),
 									Backend: networkingv1.IngressBackend{
 										Service: &networkingv1.IngressServiceBackend{
 											Name: makeName(testService),
 											Port: networkingv1.ServiceBackendPort{
-												Name: TEST_SERVICE_PORT_NAME,
+												Name: testServicePortName,
 											},
 										},
 									},
@@ -135,7 +137,7 @@ func (runner *testRunner) makeIngress(testService TestService) *networkingv1.Ing
 			TLS: []networkingv1.IngressTLS{
 				{
 					Hosts:      []string{host},
-					SecretName: runner.config.Ingress.TlsSecretName,
+					SecretName: runner.config.Ingress.TLSSecretName,
 				},
 			},
 		},
@@ -143,7 +145,7 @@ func (runner *testRunner) makeIngress(testService TestService) *networkingv1.Ing
 }
 
 func makeName(testService TestService) string {
-	return fmt.Sprintf("test-service-%s", testService.Uuid)
+	return fmt.Sprintf("test-service-%s", testService.UUID)
 }
 
 func makeLabels(testService TestService) map[string]string {
