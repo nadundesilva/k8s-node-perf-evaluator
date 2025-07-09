@@ -3,6 +3,7 @@ package evaluator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -56,15 +57,19 @@ type testServiceResponse struct {
 	Status status
 }
 
-func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) TestRunnerInterface {
+func NewTestRunner(config *config.Config, logger *zap.SugaredLogger) (TestRunnerInterface, error) {
+	k8sClient, err := k8s.NewFromKubeConfig(config.KubeConfig)
+	if err != nil {
+		return nil, err
+	}
 	return &testRunner{
 		config:    config,
 		logger:    logger,
-		k8sClient: k8s.NewFromKubeConfig(config.KubeConfig),
+		k8sClient: k8sClient,
 		httpClient: &http.Client{
 			Timeout: time.Minute,
 		},
-	}
+	}, nil
 }
 
 func (runner *testRunner) RunTest(ctx context.Context) ([]*TestSuite, error) {
@@ -73,7 +78,7 @@ func (runner *testRunner) RunTest(ctx context.Context) ([]*TestSuite, error) {
 		FieldSelector: runner.config.NodeSelector.FieldSelector,
 	})
 	if err != nil {
-		runner.logger.Fatalw("failed to list the nodes in the cluster", "error", err)
+		return nil, fmt.Errorf("failed to list the nodes in the cluster: %w", err)
 	}
 
 	testSuites := []*TestSuite{}
@@ -120,7 +125,7 @@ func (runner *testRunner) RunTest(ctx context.Context) ([]*TestSuite, error) {
 func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *corev1.NodeList) ([]*TestService, error) {
 	namespace, err := runner.k8sClient.GetNamespace(ctx, runner.config.Namespace)
 	if err != nil {
-		runner.logger.Fatalw("failed to check if the test services namespace existed", "namespace", runner.config.Namespace, "error", err)
+		return nil, fmt.Errorf("failed to check if the test services namespace existed: %w", err)
 	}
 	if namespace != nil {
 		err = runner.k8sClient.DeleteNamespace(ctx, namespace.GetName())
@@ -137,7 +142,7 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 
 	namespace, err = runner.k8sClient.CreateNamespace(ctx, runner.makeNamespace(runner.config.Namespace))
 	if err != nil {
-		runner.logger.Fatalw("failed to create test services namespace", "namespace", runner.config.Namespace, "error", err)
+		return nil, fmt.Errorf("failed to create test services namespace: %w", err)
 	}
 	runner.logger.Infow("created test services namespace", "namespace", namespace.GetName())
 
@@ -151,17 +156,17 @@ func (runner *testRunner) prepareTestServices(ctx context.Context, nodesList *co
 
 		deployment, err := runner.k8sClient.CreateDeployment(ctx, runner.makeDeployment(*testService))
 		if err != nil {
-			runner.logger.Fatalw("failed to create deployment for node", "node", nodeName, "error", err)
+			return nil, fmt.Errorf("failed to create deployment for node %s: %w", nodeName, err)
 		}
 
 		service, err := runner.k8sClient.CreateService(ctx, runner.makeService(*testService))
 		if err != nil {
-			runner.logger.Fatalw("failed to create service for node", "node", nodeName, "error", err)
+			return nil, fmt.Errorf("failed to create service for node %s: %w", nodeName, err)
 		}
 
 		ingress, err := runner.k8sClient.CreateIngress(ctx, runner.makeIngress(*testService))
 		if err != nil {
-			runner.logger.Fatalw("failed to create ingress for node", "node", nodeName, "error", err)
+			return nil, fmt.Errorf("failed to create ingress for node %s: %w", nodeName, err)
 		}
 		testService.BaseURL = runner.config.Ingress.ProtocolScheme + "://" + ingress.Spec.Rules[0].Host + ingress.Spec.Rules[0].HTTP.Paths[0].Path
 

@@ -40,7 +40,10 @@ func main() {
 		logger.Fatalw("failed to read Config", "error", err)
 	}
 
-	testRunner := evaluator.NewTestRunner(config, logger)
+	testRunner, err := evaluator.NewTestRunner(config, logger)
+	if err != nil {
+		logger.Fatalw("failed to create test runner", "error", err)
+	}
 	testRun, err := testRunner.RunTest(ctx)
 	if err != nil {
 		logger.Fatalw("Failed to run test", "error", err)

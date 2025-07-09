@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"fmt"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -11,20 +13,20 @@ type client struct {
 
 var _ Interface = (*client)(nil)
 
-func NewFromKubeConfig(kubeConfigPath string) Interface {
+func NewFromKubeConfig(kubeConfigPath string) (Interface, error) {
 	// use the current context in kubeconfig
 	config, err := clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 	if err != nil {
-		panic(err.Error())
+		return nil, fmt.Errorf("failed to create k8s config: %w", err)
 	}
 
 	// create the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err.Error())
+		return nil, fmt.Errorf("failed to create k8s client set: %w", err)
 	}
 
 	return &client{
 		clientset: clientset,
-	}
+	}, nil
 }

@@ -13,9 +13,16 @@ type metrics struct {
 }
 
 func calculateMetrics(test *evaluator.Test) *metrics {
+	if test.TotalRequestsCount == 0 {
+		return &metrics{
+			averageLatency:     0,
+			failedRequestCount: test.TotalFailedRequestsCount,
+			failedPercentage:   0,
+		}
+	}
 	return &metrics{
 		averageLatency:     time.Duration(test.TotalLatency.Nanoseconds() / int64(test.TotalRequestsCount)),
 		failedRequestCount: test.TotalFailedRequestsCount,
-		failedPercentage:   float64(test.TotalFailedRequestsCount/test.TotalRequestsCount) * 100,
+		failedPercentage:   float64(test.TotalFailedRequestsCount) / float64(test.TotalRequestsCount) * 100,
 	}
 }
