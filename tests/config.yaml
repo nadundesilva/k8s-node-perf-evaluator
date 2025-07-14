@@ -6,9 +6,10 @@ nodeSelector:
   labelSelector: ""
   fieldSelector: ""
 ingress:
-  className: ""
+  className: "nginx"
   tlsSecretName: ""
   protocolScheme: "http"
-  hostnamePostfix: ""
+  hostnamePostfix: "test.k8s-node-per-evaluator.io"
   pathPrefix: "/"
-  annotations: {}
+  annotations:
+    k8s-node-per-evaluator/usage: test

@@ -35,7 +35,11 @@ type Ingress struct {
 	Annotations     map[string]string `yaml:"annotations"`
 }
 
-func Read(configFile string) (*Config, error) {
+func Read(c string) (*Config, error) {
+	configFile, err := filepath.Abs(c)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve the absolute path of config file: %w", err)
+	}
 	configContent, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)

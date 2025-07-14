@@ -1,33 +1,17 @@
-from typing import Generator
-
 import docker
+import docker.client
 import docker.models
 import docker.models.images
-import pytest
 import requests
 
-from .utils import build_image, wait_for_container
+from .utils.docker import wait_for_container
 
 ping_response_body = {"status": "success"}
 cpu_intensive_task_response_body = {"status": "success", "result": "-253290.33"}
 
 
-@pytest.fixture(scope="module")
-def test_service_image(
-    docker_client: docker.DockerClient,
-) -> Generator[docker.models.images.Image, None, None]:
-    image = build_image(
-        context_path="../",
-        image_tag="test-service:test",
-        dockerfile="docker/Dockerfile.test-service",
-        docker_client=docker_client,
-    )
-    yield image
-    docker_client.images.remove(image.id, force=True)
-
-
 def test_service(
-    docker_client: docker.DockerClient,
+    docker_client: docker.client.DockerClient,
     test_service_image: docker.models.images.Image,
 ) -> None:
     server_bind_port = 18080
