@@ -134,12 +134,17 @@ func (runner *testRunner) makeIngress(testService TestService) *networkingv1.Ing
 					},
 				},
 			},
-			TLS: []networkingv1.IngressTLS{
-				{
-					Hosts:      []string{host},
-					SecretName: runner.config.Ingress.TLSSecretName,
-				},
-			},
+			TLS: func() []networkingv1.IngressTLS {
+				if runner.config.Ingress.TLSSecretName != "" {
+					return []networkingv1.IngressTLS{
+						{
+							Hosts:      []string{host},
+							SecretName: runner.config.Ingress.TLSSecretName,
+						},
+					}
+				}
+				return []networkingv1.IngressTLS{}
+			}(),
 		},
 	}
 }

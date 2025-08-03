@@ -50,7 +50,7 @@ class KindCluster:
                             EOF""")
 
         kindNodeContainer = self._docker_client.containers.get(
-            f"{self._kind_cluster_name}-control-plane"
+            self.control_plane_node_name()
         )
         wait_for_container(kindNodeContainer)
 
@@ -86,7 +86,7 @@ class KindCluster:
 
         print("Fetching Kube Config")
         exit_code, kubeconfig = self._run_command_and_get_output(
-            f"kind get kubeconfig --name {self._kind_cluster_name}"
+            f"kind get kubeconfig --internal --name {self._kind_cluster_name}"
         )
         assert exit_code == 0, kubeconfig
 
@@ -124,6 +124,15 @@ class KindCluster:
 
     def kube_config_path(self) -> str:
         return self._kubeconfig_file.name
+
+    def control_plane_node_name(self) -> str:
+        return f"{self._kind_cluster_name}-control-plane"
+
+    def control_plane_node_ip(self) -> str:
+        kindNodeContainer = self._docker_client.containers.get(
+            self.control_plane_node_name()
+        )
+        return kindNodeContainer.attrs["NetworkSettings"]["Networks"]["kind"]["IPAddress"]
 
     def stop(self) -> None:
         print("Shutting Down Kind Cluster")

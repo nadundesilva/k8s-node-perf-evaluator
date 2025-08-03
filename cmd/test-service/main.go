@@ -14,6 +14,7 @@ var servicePort = os.Getenv("SERVICE_PORT")
 func main() {
 	serviceMux := http.NewServeMux()
 
+	serviceMux.Handle("/", http.HandlerFunc(handleUnknownPath))
 	serviceMux.Handle("/ping", http.HandlerFunc(handlePing))
 	serviceMux.Handle("/cpu-intensive-task", http.HandlerFunc(handleCPUIntensiveTask))
 
@@ -32,6 +33,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen to test service: %v", err)
 	}
+}
+
+func handleUnknownPath(w http.ResponseWriter, _ *http.Request) {
+	_, err := fmt.Fprintf(w, "{\"status\":\"not_found\"}")
+	if err != nil {
+		log.Printf("Failed to write response to ping: %v", err)
+	}
+	w.WriteHeader(http.StatusNotFound)
 }
 
 func handlePing(w http.ResponseWriter, _ *http.Request) {
