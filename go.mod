@@ -1,14 +1,14 @@
 module github.com/nadundesilva/k8s-node-perf-evaluator
 
-go 1.24.6
+go 1.25.0
 
 require (
 	github.com/google/uuid v1.6.0
 	go.uber.org/zap v1.27.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/api v0.33.3
-	k8s.io/apimachinery v0.33.3
-	k8s.io/client-go v0.33.3
+	k8s.io/api v0.33.4
+	k8s.io/apimachinery v0.33.4
+	k8s.io/client-go v0.33.4
 )
 
 require (
