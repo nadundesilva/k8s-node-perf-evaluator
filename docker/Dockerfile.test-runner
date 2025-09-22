@@ -7,7 +7,6 @@ WORKDIR /repo
 COPY ./ /repo/
 RUN GIT_REVISION=${GIT_REVISION} PROJECT_PKG=${PROJECT_PKG} bash /repo/build-binary.sh test-runner
 
-#checkov:skip=CKV_DOCKER_2: no need for a healthcheck since this is a job
 FROM alpine:3.22.1@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1
 
 ARG USER_ID="10000"
@@ -27,5 +26,9 @@ WORKDIR /app
 
 SHELL ["/bin/ash", "-c"]
 USER ${USER_ID}:${GROUP_ID}
+
+#checkov:skip=CKV_DOCKER_2: Not required since nothing is running
+#trivy:ignore:AVD-DS-0026 # Not required since nothing is running
+HEALTHCHECK NONE
 
 ENTRYPOINT ["/app/test-runner"]
