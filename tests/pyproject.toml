@@ -9,12 +9,12 @@ license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.13.6"
 dependencies = [
-    "pytest (>=8.4.1,<9.0.0)",
+    "pytest (>=8.4.2,<9.0.0)",
     "docker (>=7.1.0,<8.0.0)",
-    "mypy (>=1.17.1,<2.0.0)",
-    "types-docker (>=7.1.0.20250809,<8.0.0.0)",
+    "mypy (>=1.18.2,<2.0.0)",
+    "types-docker (>=7.1.0.20250916,<8.0.0.0)",
     "pyyaml (>=6.0.2,<7.0.0)",
-    "types-pyyaml (>=6.0.12.20250809,<7.0.0.0)",
+    "types-pyyaml (>=6.0.12.20250915,<7.0.0.0)",
 ]
 
 
@@ -26,4 +26,4 @@ build-backend = "poetry.core.masonry.api"
 package-mode = false
 
 [tool.poetry.group.dev.dependencies]
-ruff = "0.12.8"
+ruff = "0.13.1"
